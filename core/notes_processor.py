@@ -1,5 +1,5 @@
 from typing import List, Dict
-from process.csv import parse_csv
+from process.csv import parse_csv, parse_csv_2
 
 
 async def process_notes_file(file) -> Dict:

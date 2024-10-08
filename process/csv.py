@@ -9,10 +9,10 @@ from typing import List, Dict
 
 load_dotenv()
 
-SECRET_KEY = os.getenv('SECRET_KEY')
+SECRET_KEY = os.getenv('KEY_API_OPENAI')
 
 # Clave de OpenAI
-_api_key = 'api'
+_api_key = SECRET_KEY
 
 openai.api_key = _api_key
 
@@ -29,27 +29,34 @@ def call_openai_for_mapping(headers: List[str]) -> Dict[str, str]:
     Si algún encabezado no coincide directamente, intenta sugerir cuál palabra clave podría corresponder o indícame "Sin Coincidencia".
     """
 
-    # Usar la nueva API ChatCompletion
-    response = openai.completions.create(
-        model="gpt-3.5-turbo",  # O usa gpt-4 si tienes acceso
-        prompt=[
-            {"role": "system", "content": "Eres un asistente que mapea encabezados de CSV."},
-            {"role": "user", "content": prompt}
-        ],
-        max_tokens=150,
-        temperature=0.5
-    )
+    mensaje = [
+        {"role": "system", "content": "Eres un asistente que mapea encabezados de CSV."},
+        {"role": "user", "content": prompt}
+    ]
 
-    # Procesar la respuesta
-    mapping_suggestion = response['choices'][0]['message']['content'].strip()
-
-    # Intentar convertir el texto en un diccionario (ajusta según el formato de respuesta)
     try:
-        mapping_dict = eval(mapping_suggestion)
-    except:
-        mapping_dict = {}  # Maneja el error si eval no puede parsear la respuesta correctamente
+        # Usar la nueva API ChatCompletion
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",  # O usa gpt-4 si tienes acceso
+            messages=mensaje,
+            max_tokens=150,
+            temperature=0.5
+        )
 
-    return mapping_dict
+        # Procesar la respuesta
+        mapping_suggestion = response['choices'][0]['message']['content'].strip()
+
+        # Intentar convertir el texto en un diccionario (ajusta según el formato de respuesta)
+        try:
+            mapping_dict = eval(mapping_suggestion)
+        except:
+            mapping_dict = {}  # Manejo de errores si eval no puede parsear la respuesta correctamente
+
+        return mapping_dict
+
+    except Exception as e:
+        print(f"Error llamando a OpenAI: {e}")
+        return {}
 
 
 def parse_csv(contents: str) -> List[Dict]:
@@ -61,7 +68,6 @@ def parse_csv(contents: str) -> List[Dict]:
 
     # Llama a OpenAI para mapear los encabezados a las palabras clave
     header_mapping = call_openai_for_mapping(headers)
-
     notes = []
 
     # Procesa el CSV con los encabezados mapeados
