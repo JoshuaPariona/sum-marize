@@ -2,18 +2,15 @@
 
 import openai
 import os
+import pandas as pd
 from dotenv import load_dotenv
 from typing import List, Dict
-from openpyxl import load_workbook
 
+# Cargar las variables de entorno
 load_dotenv()
 
 SECRET_KEY = os.getenv('KEY_API_OPENAI')
-
-# Clave de OpenAI
-_api_key = SECRET_KEY
-
-openai.api_key = _api_key
+openai.api_key = SECRET_KEY
 
 keywords = {"Código Alumno", "Apellidos y Nombres", "NP", "EV", "NF"}
 
@@ -34,23 +31,19 @@ def call_openai_for_mapping(headers: List[str]) -> Dict[str, str]:
     ]
 
     try:
-        # Usar la nueva API ChatCompletion
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # O usa gpt-4 si tienes acceso
+            model="gpt-3.5-turbo",
             messages=mensaje,
             max_tokens=150,
             temperature=0.5
         )
-
-        # Procesar la respuesta
         mapping_suggestion = response['choices'][0]['message']['content'].strip(
         )
 
-        # Intentar convertir el texto en un diccionario (ajusta según el formato de respuesta)
         try:
             mapping_dict = eval(mapping_suggestion)
         except:
-            mapping_dict = {}  # Manejo de errores si eval no puede parsear la respuesta correctamente
+            mapping_dict = {}
 
         return mapping_dict
 
@@ -59,25 +52,57 @@ def call_openai_for_mapping(headers: List[str]) -> Dict[str, str]:
         return {}
 
 
+def detect_headers_with_keywords(df: pd.DataFrame, keywords: List[str]) -> Dict[str, int]:
+    """
+    Detecta las cabeceras en el DataFrame buscando palabras clave conocidas.
+    Devuelve un diccionario con los nombres de las cabeceras y su índice de columna.
+    """
+    for index, row in df.iterrows():
+        for col_idx, cell in enumerate(row):
+            if isinstance(cell, str):
+                # Si encontramos una palabra clave en la celda
+                if any(keyword.lower() in cell.lower() for keyword in keywords):
+                    # Identificamos que esta fila contiene las cabeceras
+                    headers = {df.columns[col_idx + i]: col_idx + i for i in range(len(
+                        row)) if col_idx + i < len(df.columns) and pd.notna(df.iloc[index, col_idx + i])}
+                    return headers, index
+
+    return {}, None
+
+
 def parse_excel(file_path: str) -> List[Dict]:
     """
     Parsea el contenido del archivo Excel y convierte cada fila en un diccionario con sus columnas.
     """
-    workbook = load_workbook(file_path)
-    sheet = workbook.active
+    # Cargar el archivo Excel con pandas
+    df = pd.read_excel(file_path, sheet_name=0)
 
-    # Obtener los encabezados de la primera fila del Excel
-    headers = [cell.value for cell in sheet[1]]
+    # Definir las palabras clave de las cabeceras
+    header_keywords = ["Código Alumno",
+                       "Apellidos y Nombres", "NP", "EV", "NF"]
 
-    # Llama a OpenAI para mapear los encabezados a las palabras clave
-    header_mapping = call_openai_for_mapping(headers)
-    notes = []
+    # Detectar los encabezados usando palabras clave
+    headers, header_row = detect_headers_with_keywords(df, header_keywords)
 
-    # Procesa las filas siguientes (omitiendo la primera que son los encabezados)
-    for row in sheet.iter_rows(min_row=2, values_only=True):
-        row_dict = {headers[i]: row[i] for i in range(len(headers))}
-        cleaned_row = clean_data(row_dict, header_mapping)
-        notes.append(cleaned_row)
+    if not headers:
+        raise ValueError(
+            "No se pudieron detectar las cabeceras en el archivo Excel.")
+
+    # Llamar a OpenAI para mapear los encabezados a las palabras clave
+    header_mapping = call_openai_for_mapping(list(headers.keys()))
+
+    # Comprobar si el número de encabezados mapeados es menor que las columnas reales
+    mapped_columns = [header_mapping.get(col, col) for col in headers.keys()]
+    if len(mapped_columns) < len(df.columns):
+        # Completar las columnas restantes con sus nombres originales si no fueron mapeadas
+        mapped_columns.extend(df.columns[len(mapped_columns):])
+
+    # Extraer la tabla a partir de la fila de los encabezados
+    table_data = df.iloc[header_row + 1:].copy()
+    table_data.columns = mapped_columns
+
+    # Convertir los datos a una lista de diccionarios
+    notes = table_data.dropna(how="all").to_dict(orient="records")
 
     return notes
 
