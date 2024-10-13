@@ -1,7 +1,7 @@
 import mimetypes
 from typing import List, Dict
 from process.csv import parse_csv
-from process.excel import parse_excel
+from process.excel_v2 import parse_excel
 from process.pdf import parse_pdf_table
 from process.txt import parse_txt_table
 
@@ -28,6 +28,7 @@ async def process_notes_file(file) -> Dict:
         notes_data = parse_txt_table(file_path)
     else:
         raise ValueError(f"Tipo de archivo no soportado: {file_type}")
+    
 
     # Convertir los datos procesados en las diferentes formas de JSON
     processed_notes = {
