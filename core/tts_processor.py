@@ -2,6 +2,7 @@ import pyttsx3
 import hashlib
 import json
 import io
+import os
 
 
 def hash_json(data):
@@ -29,5 +30,8 @@ async def process_data(data):
     with open("students_audio.wav", "rb") as f:
         audio_buffer.write(f.read())
     audio_buffer.seek(0)
+
+    if os.path.exists("students_audio.wav"):
+        os.remove("students_audio.wav")
 
     return audio_buffer
