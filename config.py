@@ -4,7 +4,7 @@ keywords = {
         "codigo alumno", "código alumno", "código de alumno", "codigo de alumno",
         "código estudiantil", "clave de alumno", "matrícula de alumno",
         "identificación de alumno", "número de alumno", "carnet de alumno",
-        "student code", "student id", "student number", "student identification", "codigo", "código"
+        "student code", "student id", "student number", "student identification", "codigo", "código", "code"
     ],
     "Apellidos y Nombres": [
         "apellidos y nombres", "nombre completo", "nombres completos", "nombre y apellidos",
