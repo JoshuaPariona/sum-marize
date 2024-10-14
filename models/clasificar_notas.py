@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from faker import Faker
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
@@ -16,6 +17,8 @@ def prepare_data(notes_df):
     # Calcular el resultado final basado en la fórmula
     notes_df['resultado_final'] = (
         0.2 * notes_df['NP'] + 0.6 * notes_df['EV'] + 0.2 * notes_df['NF']).round()
+
+    print(notes_df['resultado_final'])
 
     # Determinar si aprueba o no (1 = aprueba, 0 = reprueba)
     notes_df['aprobado'] = np.where(notes_df['resultado_final'] >= 11, 1, 0)
@@ -71,12 +74,22 @@ def load_model(model_path='classification_model.pkl'):
 
 # Ejemplo de cómo entrenar y guardar el modelo
 if __name__ == "__main__":
+
+    fake = Faker()
+
     # Crear un dataframe de ejemplo con las notas
     data = {
         'NP': [10, 12, 9, 14, 8, 15, 16, 11, 7, 18],
         'EV': [12, 15, 10, 14, 9, 13, 14, 12, 8, 16],
         'NF': [11, 13, 8, 15, 9, 14, 12, 11, 7, 17]
     }
+
+    # Generar más datos
+    for _ in range(1000):  # Genera 1000 filas adicionales
+        data['NP'].append(fake.random_int(min=0, max=20))
+        data['EV'].append(fake.random_int(min=0, max=20))
+        data['NF'].append(fake.random_int(min=0, max=20))
+
     notes_df = pd.DataFrame(data)
 
     # Preparar los datos
