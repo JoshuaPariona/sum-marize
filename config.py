@@ -11,12 +11,12 @@ keywords = {
         "last names and first names", "full name", "nombres y apellidos"
     ],
     "NP": [
-        "nota parcial", "puntuación parcial", "evaluación parcial", "parcial"
+        "nota parcial", "puntuación parcial", "evaluación parcial", "parcial", "np" 
     ],
     "EV": [
-        "evaluación continua", "trabajo en clase", "evaluación formativa", "ec", "evaluacion", "evaluación"
+        "evaluación continua", "trabajo en clase", "evaluación formativa", "ec", "evaluacion", "evaluación", "ev"
     ],
     "NF": [
-        "nota final", "calificación final", "puntuación final", "evaluación sumativa", "final"
+        "nota final", "calificación final", "puntuación final", "evaluación sumativa", "final", "nf"
     ]
 }

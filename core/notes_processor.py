@@ -1,6 +1,9 @@
 import config
 import mimetypes
+import os
+import tempfile
 from typing import List, Dict
+
 from process.csv import parse_csv
 from process.excel_v2 import parse_excel
 from process.pdf import parse_pdf_table
@@ -8,40 +11,53 @@ from process.txt import parse_txt_table
 
 
 async def process_notes_file(file) -> Dict:
-    # Obtener el tipo de archivo basado en la extensión o contenido
+    """Procesa un archivo de notas según su tipo y devuelve los datos extraídos."""
+
+    file_ext = os.path.splitext(file.filename)[1].lower()
     file_type, _ = mimetypes.guess_type(file.filename)
 
-    # Crear una ruta temporal para guardar el archivo
-    file_path = f"temp_{file.filename}"
+    if file_type is None:
+        if file_ext == ".csv":
+            file_type = "text/csv"
+        elif file_ext in (".xls", ".xlsx", ".xlsm", ".xltx", ".xltm"):
+            file_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
-    # Guardar el archivo subido en una ruta temporal
-    with open(file_path, "wb") as f:
-        f.write(await file.read())
+    with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as temp_file:
+        temp_file.write(await file.read())
+        file_path = temp_file.name
 
-    # Identificar y procesar el archivo según su tipo
-    if file_type == 'text/csv':
-        notes_data = parse_csv(open(file_path, 'r').read())
-    elif file_type in ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel']:
-        notes_data = parse_excel(file_path)
-    elif file_type == 'application/pdf':
-        notes_data = parse_pdf_table(file_path)
-    elif file_type == 'text/plain':
-        notes_data = parse_txt_table(file_path)
-    else:
-        raise ValueError(f"Tipo de archivo no soportado: {file_type}")
+    try:
+        if file_ext == ".csv" or file_type == "text/csv":
+            print("Procesando como CSV...")
+            notes_data = parse_csv(open(file_path, 'r', encoding='utf-8').read())
+        elif file_ext in (".xls", ".xlsx", ".xlsm", ".xltx", ".xltm") or file_type.startswith('application/vnd.openxmlformats-officedocument'):
+            print("Procesando como Excel...")
+            notes_data = parse_excel(file_path)
+        elif file_type == 'application/pdf':
+            notes_data = parse_pdf_table(file_path)
+        elif file_type == 'text/plain':
+            notes_data = parse_txt_table(file_path)
+        else:
+            raise ValueError(f"Tipo de archivo no soportado: {file_type}, Extensión: {file_ext}")
 
-    # Convertir los datos procesados en las diferentes formas de JSON
-    processed_notes = {
-        "complete": notes_data,
-        "np_only": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "NP"]),
-        "ev_only": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "EV"]),
-        "nf_only": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "NF"]),
-        "np_ev_combined": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "NP", "EV"]),
-        "ev_nf_combined": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "EV", "NF"]),
-        "np_nf_combined": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "NP", "NF"])
-    }
+        # Lógica de create_note_variations integrada aquí:
+        processed_notes = {
+            "complete": notes_data,
+            "np_only": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "NP"]),
+            "ev_only": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "EV"]),
+            "nf_only": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "NF"]),
+            "np_ev_combined": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "NP", "EV"]),
+            "ev_nf_combined": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "EV", "NF"]),
+            "np_nf_combined": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "NP", "NF"])
+        }
+
+    finally:
+        os.remove(file_path)
 
     return processed_notes
+
+
+# ... (resto del código - extract_columns, etc. - sin cambios)
 
 
 def extract_columns_v2(data: List[Dict], columns: List[str]) -> List[Dict]:
