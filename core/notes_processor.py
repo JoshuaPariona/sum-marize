@@ -1,10 +1,17 @@
 import config
 import mimetypes
+import joblib
+import os
 from typing import List, Dict
-from process.csv import parse_csv
+from process.csv_v2 import parse_csv
 from process.excel_v2 import parse_excel
 from process.pdf import parse_pdf_table
 from process.txt import parse_txt_table
+
+
+# Cargar el modelo entrenado
+model_path = 'models/classification_model.pkl'  # Ruta del modelo
+model = joblib.load(model_path)  # Cargar el modelo
 
 
 async def process_notes_file(file) -> Dict:
@@ -16,11 +23,13 @@ async def process_notes_file(file) -> Dict:
 
     # Guardar el archivo subido en una ruta temporal
     with open(file_path, "wb") as f:
-        f.write(await file.read())
+        content = await file.read()
+        f.write(content)
 
     # Identificar y procesar el archivo según su tipo
     if file_type == 'text/csv':
-        notes_data = parse_csv(open(file_path, 'r').read())
+        # Pasar directamente el contenido sin abrir el archivo
+        notes_data = parse_csv(file_path)
     elif file_type in ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel']:
         notes_data = parse_excel(file_path)
     elif file_type == 'application/pdf':
@@ -30,6 +39,12 @@ async def process_notes_file(file) -> Dict:
     else:
         raise ValueError(f"Tipo de archivo no soportado: {file_type}")
 
+    # Predecir calificación
+    try:
+        extracted_notes = predecir_calificacion(notes_data)
+    except Exception:
+        pass
+
     # Convertir los datos procesados en las diferentes formas de JSON
     processed_notes = {
         "complete": notes_data,
@@ -38,17 +53,46 @@ async def process_notes_file(file) -> Dict:
         "nf_only": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "NF"]),
         "np_ev_combined": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "NP", "EV"]),
         "ev_nf_combined": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "EV", "NF"]),
-        "np_nf_combined": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "NP", "NF"])
+        "np_nf_combined": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "NP", "NF"]),
+        "codigo_np_ev_nf": extract_columns(notes_data, ["Código Alumno", "NP", "EV", "NF"]),
+        "Qualification": extracted_notes
     }
+
+    # Eliminar el archivo temporal después de procesar
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+    except Exception as e:
+        print(f"Fallamos {e}")
 
     return processed_notes
 
 
-def extract_columns_v2(data: List[Dict], columns: List[str]) -> List[Dict]:
-    """
-    Extrae las columnas especificadas del conjunto de datos
-    """
-    return [{col: row[col] for col in columns if col in row} for row in data]
+def predecir_calificacion(notes_data):
+    # INICIO Modelo
+    # Extraer las columnas requeridas para la predicción
+    extracted_notes = extract_columns(
+        notes_data, ["Código Alumno", "NP", "EV", "NF"])
+
+    # Realizar la predicción con el modelo para cada fila
+    for note in extracted_notes:
+        # Verificar que existan valores para NP, EV, y NF
+        if note["NP"] and note["EV"] and note["NF"]:
+            # Preparar los datos de entrada para el modelo
+            input_data = [[float(note["NP"]), float(
+                note["EV"]), float(note["NF"])]]
+
+            # Realizar la predicción con el modelo
+            prediction = model.predict(input_data)
+
+            # Añadir la predicción como una nueva columna en el resultado
+            note["Calificación"] = "Aprobado" if prediction[0] == 1 else "Reprobado"
+        else:
+            note["Calificación"] = "Datos incompletos"
+
+    return extracted_notes
+
+    # FIN Modelo
 
 
 def extract_columns(data: List[Dict], column_types: List[str]) -> List[Dict]:
