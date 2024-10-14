@@ -2,6 +2,7 @@ import pyttsx3
 import hashlib
 import json
 import io
+import os
 
 
 def hash_json(data):
@@ -14,7 +15,7 @@ def hash_json(data):
 def json_to_text(data) -> str:
     text_output = data["tag"]
     for student in data["data"]:
-        text_output += f"\nEstudiante con codigo {student['codigo']}, {student['name']} {student['f-surname']} {student['m-surname']} tiene una nota de {student['grade']}."
+        text_output += f"\nEstudiante con codigo {student['codigo']}, {student['f-surname']} {student['m-surname']} {student['name']} tiene notas de: Examen Parcial nota de {student['ep']}, Evaluación continua nota de {student['ev']}, Examen final nota de {student['ef']}, Promedio Final nota de {student['pf']}."                                  
     return text_output
 
 
@@ -29,5 +30,8 @@ async def process_data(data):
     with open("students_audio.wav", "rb") as f:
         audio_buffer.write(f.read())
     audio_buffer.seek(0)
+
+    if os.path.exists("students_audio.wav"):
+        os.remove("students_audio.wav")
 
     return audio_buffer
