@@ -15,6 +15,7 @@ def parse_excel(file_path: str) -> List[Dict]:
     :param file_path: Ruta al archivo Excel.
     :return: Lista de diccionarios con los datos procesados.
     """
+
     # Usar openpyxl para cargar el archivo y buscar cabeceras
     wb = load_workbook(file_path, data_only=True)
     sheet = wb.active
