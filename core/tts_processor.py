@@ -14,7 +14,7 @@ def hash_json(data):
 def json_to_text(data) -> str:
     text_output = data["tag"]
     for student in data["data"]:
-        text_output += f"\nEstudiante con codigo {student['codigo']}, {student['name']} {student['f-surname']} {student['m-surname']} tiene una nota de {student['grade']}."
+        text_output += f"\nEstudiante con codigo {student['codigo']}, {student['f-surname']} {student['m-surname']} {student['name']} tiene notas de: Examen Parcial nota de {student['ep']}, Evaluación continua nota de {student['ev']}, Examen final nota de {student['ef']}, Promedio Final nota de {student['pf']}."                                  
     return text_output
 
 
