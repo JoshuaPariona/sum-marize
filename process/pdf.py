@@ -2,8 +2,30 @@
 
 import pdfplumber
 import pandas as pd
-import numpy as np
 from typing import List, Dict
+
+# Definición de palabras clave
+keywords = {
+    "Código Alumno": [
+        "codigo alumno", "código alumno", "código de alumno", "codigo de alumno",
+        "código estudiantil", "clave de alumno", "matrícula de alumno",
+        "identificación de alumno", "número de alumno", "carnet de alumno",
+        "student code", "student id", "student number", "student identification"
+    ],
+    "Apellidos y Nombres": [
+        "apellidos y nombres", "nombre completo", "nombres completos", "nombre y apellidos",
+        "last names and first names", "full name"
+    ],
+    "NP": [
+        "nota parcial", "puntuación parcial", "evaluación parcial"
+    ],
+    "EV": [
+        "evaluación continua", "trabajo en clase", "evaluación formativa"
+    ],
+    "NF": [
+        "nota final", "calificación final", "puntuación final", "evaluación sumativa"
+    ]
+}
 
 
 def parse_pdf_table(file_path: str) -> List[Dict]:
@@ -12,7 +34,7 @@ def parse_pdf_table(file_path: str) -> List[Dict]:
     Si la tabla ocupa más de una hoja, une los datos en una sola lista.
 
     :param file_path: Ruta al archivo PDF.
-    :return: Lista de diccionarios con los datos procesados.
+    :return: Una lista de diccionarios que incluye todos los datos procesados.
     """
     notes = []
 
@@ -24,40 +46,46 @@ def parse_pdf_table(file_path: str) -> List[Dict]:
                     continue  # Salta si no se encuentra una tabla
 
                 # Procesar la tabla
-                # Primera fila como encabezados
                 headers = [cell.strip() if cell else "" for cell in table[0]]
+                header_mapping = map_headers(headers)
 
-                # Procesar las filas siguientes (omitiendo la primera que son los encabezados)
+                # Procesa las filas siguientes (omitiendo la primera que son los encabezados)
                 for row in table[1:]:
                     if row:  # Verifica que la fila no esté vacía
-                        row_dict = {headers[i]: row[i].strip(
-                        ) if row[i] else "" for i in range(len(headers))}
-                        # Limpia y normaliza los datos
-                        cleaned_row = clean_data(row_dict)
-                        notes.append(cleaned_row)
+                        row_dict = process_row(row, header_mapping)
+                        if row_dict:  # Solo agrega si hay datos
+                            notes.append(row_dict)
 
     return notes
 
 
-def clean_data(row: Dict) -> Dict:
+def map_headers(headers: List[str]) -> Dict[str, str]:
     """
-    Limpia y normaliza los datos del PDF, asegurando que los tipos de datos sean compatibles con JSON.
-    
-    :param row: Diccionario que representa una fila de datos.
-    :return: Diccionario limpio y normalizado.
-    """
-    cleaned_row = {}
-    for key, value in row.items():
-        if pd.isnull(value):  # Si el valor es NaN, lo manejamos como una cadena vacía
-            cleaned_row[key] = ""  # Cambiar a "" para NaN
-        elif isinstance(value, (np.int64, np.float64)):
-            cleaned_row[key] = value.item()  # Convertir a int o float nativo
-        else:
-            # Intentar convertir a un número si es posible
-            try:
-                cleaned_row[key] = int(value) if isinstance(value, (int, float, str)) and str(
-                    value).replace('.', '', 1).isdigit() else str(value).strip()
-            except (ValueError, TypeError):
-                cleaned_row[key] = str(value).strip() if value else ""
+    Mapea los encabezados de la tabla a las palabras clave definidas.
 
-    return cleaned_row
+    :param headers: Lista de encabezados extraídos.
+    :return: Un diccionario que relaciona cada encabezado con su clave correspondiente.
+    """
+    header_mapping = {}
+    for i, header in enumerate(headers):
+        for key, variants in keywords.items():
+            if any(variant.lower() in header.lower() for variant in variants):
+                header_mapping[i] = key  # Guardamos el índice del encabezado
+                break
+    return header_mapping
+
+
+def process_row(row: List[str], header_mapping: Dict[int, str]) -> Dict[str, str]:
+    """
+    Procesa cada fila y asigna los valores a las columnas correspondientes.
+
+    :param row: Lista de valores en la fila.
+    :param header_mapping: Mapa de encabezados a palabras clave.
+    :return: Diccionario con los datos de la fila organizados por palabras clave.
+    """
+    row_dict = {}
+    for index, value in enumerate(row):
+        if index in header_mapping:  # Solo asigna si el índice está en el mapeo
+            row_dict[header_mapping[index]] = value.strip() if value else ""
+
+    return row_dict

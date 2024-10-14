@@ -7,7 +7,7 @@ from core.notes_processor import \
 
 router = APIRouter()
 
-@router.post("/process_notes/")
+@router.post("/process_notes")
 async def process_notes(file: UploadFile = File(...)) -> Dict:
     # Procesar el archivo CSV subido
     processed_data = await process_notes_file(file)
