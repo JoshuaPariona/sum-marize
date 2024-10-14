@@ -15,28 +15,31 @@ def parse_excel(file_path: str) -> List[Dict]:
     :param file_path: Ruta al archivo Excel.
     :return: Lista de diccionarios con los datos procesados.
     """
-    # Usar openpyxl para cargar el archivo y buscar cabeceras
-    wb = load_workbook(file_path, data_only=True)
-    sheet = wb.active
+    try:
+        # Usar openpyxl para cargar el archivo y buscar cabeceras
+        wb = load_workbook(file_path, data_only=True)
+        sheet = wb.active
 
-    # Identificar la cabecera
-    header_row, header_col = identify_table_headers(sheet)
+        # Identificar la cabecera
+        header_row, header_col = identify_table_headers(sheet)
 
-    # Eliminar filas y columnas vacías y ajustar la tabla
-    cleaned_data = adjust_table(sheet, header_row, header_col)
+        # Eliminar filas y columnas vacías y ajustar la tabla
+        cleaned_data = adjust_table(sheet, header_row, header_col)
 
-    # Convertir los datos limpios a DataFrame de pandas
-    # Primera fila como cabecera
-    df_adjusted = pd.DataFrame(cleaned_data[1:], columns=cleaned_data[0])
+        # Convertir los datos limpios a DataFrame de pandas
+        # Primera fila como cabecera
+        df_adjusted = pd.DataFrame(cleaned_data[1:], columns=cleaned_data[0])
 
-    # Renombrar columnas duplicadas
-    df_adjusted = df_adjusted.loc[:, ~df_adjusted.columns.duplicated()]
+        # Renombrar columnas duplicadas
+        df_adjusted = df_adjusted.loc[:, ~df_adjusted.columns.duplicated()]
 
-    # Convertir los datos a una lista de diccionarios (JSON), omitiendo las cabeceras
-    notes = df_adjusted.dropna(how="all").to_dict(orient="records")
+        # Convertir los datos a una lista de diccionarios (JSON), omitiendo las cabeceras
+        notes = df_adjusted.dropna(how="all").to_dict(orient="records")
 
-    # Limpiar y normalizar los datos
-    cleaned_notes = [clean_data(row) for row in notes[1:]]
+        # Limpiar y normalizar los datos
+        cleaned_notes = [clean_data(row) for row in notes[1:]]
+    except Exception as e:
+        raise ValueError(f"Problemas en el parse: {e}")
 
     return cleaned_notes
 

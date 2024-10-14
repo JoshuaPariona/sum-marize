@@ -17,6 +17,8 @@ model = joblib.load(model_path)  # Cargar el modelo
 async def process_notes_file(file) -> Dict:
     # Obtener el tipo de archivo basado en la extensión o contenido
     file_type, _ = mimetypes.guess_type(file.filename)
+    
+    print(file_type)
 
     # Crear una ruta temporal para guardar el archivo
     file_path = f"temp_{file.filename}"
@@ -26,37 +28,42 @@ async def process_notes_file(file) -> Dict:
         content = await file.read()
         f.write(content)
 
-    # Identificar y procesar el archivo según su tipo
-    if file_type == 'text/csv':
-        # Pasar directamente el contenido sin abrir el archivo
-        notes_data = parse_csv(file_path)
-    elif file_type in ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel']:
-        notes_data = parse_excel(file_path)
-    elif file_type == 'application/pdf':
-        notes_data = parse_pdf_table(file_path)
-    elif file_type == 'text/plain':
-        notes_data = parse_txt_table(file_path)
-    else:
-        raise ValueError(f"Tipo de archivo no soportado: {file_type}")
-
-    # Predecir calificación
     try:
-        extracted_notes = predecir_calificacion(notes_data)
-    except Exception:
-        pass
 
-    # Convertir los datos procesados en las diferentes formas de JSON
-    processed_notes = {
-        "complete": notes_data,
-        "np_only": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "NP"]),
-        "ev_only": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "EV"]),
-        "nf_only": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "NF"]),
-        "np_ev_combined": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "NP", "EV"]),
-        "ev_nf_combined": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "EV", "NF"]),
-        "np_nf_combined": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "NP", "NF"]),
-        "codigo_np_ev_nf": extract_columns(notes_data, ["Código Alumno", "NP", "EV", "NF"]),
-        "Qualification": extracted_notes
-    }
+        # Identificar y procesar el archivo según su tipo
+        if file_type == 'text/csv':
+            # Pasar directamente el contenido sin abrir el archivo
+            notes_data = parse_csv(file_path)
+        elif file_type in ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel']:
+            notes_data = parse_excel(file_path)
+        elif file_type == 'application/pdf':
+            notes_data = parse_pdf_table(file_path)
+        elif file_type == 'text/plain':
+            notes_data = parse_txt_table(file_path)
+        else:
+            raise ValueError(f"Tipo de archivo no soportado: {file_type}")
+
+        # Predecir calificación
+        # try:
+        #     extracted_notes = predecir_calificacion(notes_data)
+        # except Exception:
+        #     pass
+
+        # Convertir los datos procesados en las diferentes formas de JSON
+        processed_notes = {
+            "complete": notes_data,
+            "np_only": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "NP"]),
+            "ev_only": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "EV"]),
+            "nf_only": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "NF"]),
+            "np_ev_combined": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "NP", "EV"]),
+            "ev_nf_combined": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "EV", "NF"]),
+            "np_nf_combined": extract_columns(notes_data, ["Código Alumno", "Apellidos y Nombres", "NP", "NF"]),
+            "codigo_np_ev_nf": extract_columns(notes_data, ["Código Alumno", "NP", "EV", "NF"])
+            # "Qualification": extracted_notes
+        }
+
+    except Exception as e:
+        raise ValueError(f"Tipo de archivo no soportado: {e}")
 
     # Eliminar el archivo temporal después de procesar
     try:
