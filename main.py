@@ -5,21 +5,19 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-# Configurar orígenes permitidos (puedes agregar los que necesites)
 origins = [
-    "http://localhost",    # Para permitir desde localhost
-    "http://localhost:5173",  # Si estás usando React o cualquier app en el puerto 3000
-    "http://localhost:8000",  # Para tu API en el puerto 8000
-    "http://127.0.0.1:8000"   # Variaciones de localhost
+    "http://localhost",
+    "http://localhost:5173",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000"
 ]
 
-# Añadir el middleware CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,  # Permitir estos orígenes
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],  # Permitir todos los métodos (GET, POST, etc.)
-    allow_headers=["*"],  # Permitir todos los headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(tts.router, prefix="/api/v1/tts", tags=["Text-to-Speech"])
