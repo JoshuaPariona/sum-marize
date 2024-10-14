@@ -20,6 +20,8 @@ async def process_notes_file(file) -> Dict:
     # Obtener el tipo de archivo basado en la extensión o contenido
     file_ext = os.path.splitext(file.filename)[1].lower()
     file_type, _ = mimetypes.guess_type(file.filename)
+    
+    print(file_type)
 
     if file_type is None:
         if file_ext == ".csv":
